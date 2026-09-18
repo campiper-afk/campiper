@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kanban LMS - Inteligencia Artificial</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Poppins', sans-serif; }
+    .kanban-column { min-height: 200px; }
+    .card-dragging { opacity: 0.5; border: 2px dashed #4F46E5; }
+    .drag-over { background-color: #EEF2FF; }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-6">
+
+  <header class="mb-8 flex justify-between items-center">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800">Tablero Kanban - Equipo LMS</h1>
+      <p class="text-gray-500">Desarrollo del curso de IA para creación web</p>
+    </div>
+    <button onclick="toggleModal('modal-nueva-tarea')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded shadow">
+      + Nueva Tarjeta
+    </button>
+  </header>
+
+  <!-- Tablero -->
+  <div class="flex flex-col md:flex-row gap-4 overflow-x-auto pb-4" id="board">
+    
+    <!-- Columna: Backlog -->
+    <div class="flex-1 min-w-[280px] bg-gray-200 rounded-lg p-4 shadow-sm" id="col-backlog">
+      <h2 class="font-semibold text-gray-700 mb-4 border-b border-gray-300 pb-2">Backlog</h2>
+      <div class="kanban-column space-y-3" ondrop="drop(event, 'Backlog')" ondragover="allowDrop(event)" ondragleave="dragLeave(event)" id="Backlog"></div>
+    </div>
+
+    <!-- Columna: Asignado a -->
+    <div class="flex-1 min-w-[280px] bg-gray-200 rounded-lg p-4 shadow-sm" id="col-asignado">
+      <h2 class="font-semibold text-gray-700 mb-4 border-b border-gray-300 pb-2">Asignado a</h2>
+      <div class="kanban-column space-y-3" ondrop="drop(event, 'Asignado a')" ondragover="allowDrop(event)" ondragleave="dragLeave(event)" id="Asignado a"></div>
+    </div>
+
+    <!-- Columna: En progreso -->
+    <div class="flex-1 min-w-[280px] bg-gray-200 rounded-lg p-4 shadow-sm" id="col-progreso">
+      <h2 class="font-semibold text-gray-700 mb-4 border-b border-gray-300 pb-2">En progreso</h2>
+      <div class="kanban-column space-y-3" ondrop="drop(event, 'En progreso')" ondragover="allowDrop(event)" ondragleave="dragLeave(event)" id="En progreso"></div>
+    </div>
+
+    <!-- Columna: En revisión -->
+    <div class="flex-1 min-w-[280px] bg-yellow-100 rounded-lg p-4 shadow-sm border border-yellow-300" id="col-revision">
+      <h2 class="font-semibold text-yellow-800 mb-4 border-b border-yellow-300 pb-2">En revisión 📩</h2>
+      <div class="kanban-column space-y-3" ondrop="drop(event, 'En revisión')" ondragover="allowDrop(event)" ondragleave="dragLeave(event)" id="En revisión"></div>
+    </div>
+
+    <!-- Columna: Finalizado -->
+    <div class="flex-1 min-w-[280px] bg-green-100 rounded-lg p-4 shadow-sm border border-green-300" id="col-finalizado">
+      <h2 class="font-semibold text-green-800 mb-4 border-b border-green-300 pb-2">Finalizado</h2>
+      <div class="kanban-column space-y-3" ondrop="drop(event, 'Finalizado')" ondragover="allowDrop(event)" ondragleave="dragLeave(event)" id="Finalizado"></div>
+    </div>
+
+  </div>
+
+  <!-- Modal para Nueva Tarjeta -->
+  <div id="modal-nueva-tarea" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+      <h3 class="text-xl font-bold mb-4">Crear Nueva Tarea</h3>
+      <form id="form-nueva-tarea" onsubmit="crearTarjeta(event)">
+        <input type="text" id="titulo" placeholder="Título de la actividad" class="w-full mb-3 p-2 border rounded" required>
+        <textarea id="descripcion" placeholder="Descripción detallada" class="w-full mb-3 p-2 border rounded" rows="3" required></textarea>
+        <select id="responsable" class="w-full mb-3 p-2 border rounded" required>
+          <option value="">Asignar a...</option>
+          <option value="Desarrollador 1">Desarrollador 1</option>
+          <option value="Desarrollador 2">Desarrollador 2</option>
+          <option value="Diseñador UI">Diseñador UI</option>
+          <option value="Content Creator">Content Creator</option>
+        </select>
+        <div class="flex gap-2 mb-3">
+          <input type="date" id="fechaInicio" class="w-1/2 p-2 border rounded" title="Fecha de inicio" required>
+          <input type="date" id="fechaFin" class="w-1/2 p-2 border rounded" title="Fecha de finalización" required>
+        </div>
+        <input type="url" id="url" placeholder="URL del Entregable (Opcional)" class="w-full mb-4 p-2 border rounded">
+        
+        <div class="flex justify-end gap-2">
+          <button type="button" onclick="toggleModal('modal-nueva-tarea')" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Cancelar</button>
+          <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Guardar Tarjeta</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // CONFIGURACIÓN: Pega aquí la URL de tu Web App
+    // ==========================================
+    const API_URL = 'TU_URL_DE_GOOGLE_APPS_SCRIPT_AQUI';
+
+    // Inicializar Tablero
+    document.addEventListener("DOMContentLoaded", cargarTarjetas);
+
+    async function cargarTarjetas() {
+      try {
+        const response = await fetch(API_URL);
+        const tarjetas = await response.json();
+        renderizarTarjetas(tarjetas);
+      } catch (error) {
+        console.error("Error al cargar datos:", error);
+      }
+    }
+
+    function renderizarTarjetas(tarjetas) {
+      // Limpiar columnas
+      document.querySelectorAll('.kanban-column').forEach(col => col.innerHTML = '');
+      
+      tarjetas.forEach(tarjeta => {
+        const cardElement = document.createElement('div');
+        cardElement.className = "bg-white p-3 rounded shadow cursor-grab active:cursor-grabbing border-l-4 border-indigo-500 hover:shadow-md transition-shadow";
+        cardElement.draggable = true;
+        cardElement.id = `card-${tarjeta.id}`;
+        cardElement.dataset.id = tarjeta.id;
+        
+        cardElement.ondragstart = drag;
+        
+        let urlHTML = tarjeta.url ? `<a href="${tarjeta.url}" target="_blank" class="text-xs text-blue-600 hover:underline truncate block mt-2">🔗 Ver Entregable</a>` : '';
+
+        cardElement.innerHTML = `
+          <h4 class="font-bold text-gray-800 text-sm mb-1">${tarjeta.titulo}</h4>
+          <p class="text-xs text-gray-600 mb-2 line-clamp-2">${tarjeta.descripcion}</p>
+          <div class="flex justify-between items-center text-[10px] text-gray-500 mb-1">
+            <span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded">${tarjeta.responsable}</span>
+          </div>
+          <div class="text-[10px] text-gray-400">
+            ⏳ ${tarjeta.fechaInicio} - ${tarjeta.fechaFin}
+          </div>
+          ${urlHTML}
+        `;
+
+        const columnaDestino = document.getElementById(tarjeta.estado);
+        if (columnaDestino) columnaDestino.appendChild(cardElement);
+      });
+    }
+
+    // Funciones Drag & Drop
+    function drag(ev) {
+      ev.dataTransfer.setData("text", ev.target.id);
+      setTimeout(() => ev.target.classList.add("card-dragging"), 0);
+    }
+
+    function allowDrop(ev) {
+      ev.preventDefault();
+      ev.currentTarget.classList.add("drag-over");
+    }
+
+    function dragLeave(ev) {
+      ev.currentTarget.classList.remove("drag-over");
+    }
+
+    async function drop(ev, nuevoEstado) {
+      ev.preventDefault();
+      ev.currentTarget.classList.remove("drag-over");
+      
+      const elementId = ev.dataTransfer.getData("text");
+      const cardElement = document.getElementById(elementId);
+      cardElement.classList.remove("card-dragging");
+      
+      // Mover visualmente primero (Optimistic UI)
+      ev.currentTarget.appendChild(cardElement);
+      
+      const databaseId = cardElement.dataset.id;
+      
+      // Notificar al backend
+      try {
+        await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' }, // Evita preflight CORS errors
+          body: JSON.stringify({
+            action: 'updateStatus',
+            id: databaseId,
+            newStatus: nuevoEstado
+          })
+        });
+      } catch (error) {
+        console.error("Error actualizando la tarjeta:", error);
+        alert("Hubo un problema de conexión al actualizar la base de datos.");
+      }
+    }
+
+    // Modal y Creación
+    function toggleModal(id) {
+      const modal = document.getElementById(id);
+      modal.classList.toggle('hidden');
+    }
+
+    async function crearTarjeta(event) {
+      event.preventDefault();
+      const boton = event.target.querySelector('button[type="submit"]');
+      boton.disabled = true;
+      boton.innerText = "Guardando...";
+
+      const nuevaTarjeta = {
+        titulo: document.getElementById('titulo').value,
+        descripcion: document.getElementById('descripcion').value,
+        responsable: document.getElementById('responsable').value,
+        fechaInicio: document.getElementById('fechaInicio').value,
+        fechaFin: document.getElementById('fechaFin').value,
+        url: document.getElementById('url').value
+      };
+
+      try {
+        await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({
+            action: 'createCard',
+            card: nuevaTarjeta
+          })
+        });
+        
+        // Recargar el tablero completo para asegurar sincronización
+        await cargarTarjetas();
+        event.target.reset();
+        toggleModal('modal-nueva-tarea');
+      } catch (error) {
+        console.error("Error creando tarea:", error);
+      } finally {
+        boton.disabled = false;
+        boton.innerText = "Guardar Tarjeta";
+      }
+    }
+  </script>
+</body>
+</html>
