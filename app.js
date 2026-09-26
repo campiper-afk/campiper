@@ -1,5 +1,5 @@
 // Configuración
-const SPRINT_MASTER_EMAIL = "sprintmaster@tudominio.com"; // Reemplaza con el correo real
+const SPRINT_MASTER_EMAIL = "ignaciogaunap@gmail.com"; // Reemplaza con el correo real
 const SHEET_NAME = "Kanban";
 
 /**
@@ -44,6 +44,8 @@ function doPost(e) {
       return actualizarEstadoTarjeta(payload.id, payload.newStatus);
     } else if (action === "createCard") {
       return crearTarjeta(payload.card);
+    } else if (action === "updateCard") {
+      return actualizarTarjeta(payload.card);
     }
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: error.message }))
@@ -73,6 +75,34 @@ function actualizarEstadoTarjeta(id, nuevoEstado) {
     }
   }
   
+  return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Tarjeta no encontrada' }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function actualizarTarjeta(card) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  const data = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] == card.id) {
+      const fila = i + 1;
+
+      // Columnas B a G: Título, Descripción, Responsable, FechaInicio, FechaFin, URL
+      // (No se toca la columna H "Estado", eso lo maneja actualizarEstadoTarjeta)
+      sheet.getRange(fila, 2, 1, 6).setValues([[
+        card.titulo,
+        card.descripcion,
+        card.responsable,
+        card.fechaInicio,
+        card.fechaFin,
+        card.url
+      ]]);
+      
+      return ContentService.createTextOutput(JSON.stringify({ status: 'success' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
   return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Tarjeta no encontrada' }))
     .setMimeType(ContentService.MimeType.JSON);
 }
