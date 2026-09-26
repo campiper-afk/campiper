@@ -17,7 +17,7 @@
 
   <header class="mb-8 flex justify-between items-center">
     <div>
-      <h1 class="text-3xl font-bold text-gray-800">Tablero Kanban - Equipo LMS</h1>
+      <h1 class="text-3xl font-bold text-gray-800">Tablero Kanban - Equipo Campiper</h1>
       <p class="text-gray-500">Desarrollo del curso de IA para creación web</p>
     </div>
     <button onclick="toggleModal('modal-nueva-tarea')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded shadow">
@@ -69,9 +69,9 @@
         <textarea id="descripcion" placeholder="Descripción detallada" class="w-full mb-3 p-2 border rounded" rows="3" required></textarea>
         <select id="responsable" class="w-full mb-3 p-2 border rounded" required>
           <option value="">Asignar a...</option>
-          <option value="Desarrollador 1">Ignacio</option>
-          <option value="Desarrollador 2">Jean Paul</option>
-          <option value="Diseñador UI">Breiner</option>
+          <option value="Ignacio">Ignacio</option>
+          <option value="Jean Paul">Jean Paul</option>
+          <option value="Breiner">Breiner</option>
         </select>
         <div class="flex gap-2 mb-3">
           <input type="date" id="fechaInicio" class="w-1/2 p-2 border rounded" title="Fecha de inicio" required>
@@ -87,11 +87,39 @@
     </div>
   </div>
 
+  <!-- Modal para Editar Tarjeta -->
+  <div id="modal-editar-tarea" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+      <h3 class="text-xl font-bold mb-4">Editar Tarea</h3>
+      <form id="form-editar-tarea" onsubmit="guardarEdicion(event)">
+        <input type="hidden" id="edit-id">
+        <input type="text" id="edit-titulo" placeholder="Título de la actividad" class="w-full mb-3 p-2 border rounded" required>
+        <textarea id="edit-descripcion" placeholder="Descripción detallada" class="w-full mb-3 p-2 border rounded" rows="3" required></textarea>
+        <select id="edit-responsable" class="w-full mb-3 p-2 border rounded" required>
+          <option value="">Asignar a...</option>
+          <option value="Ignacio">Ignacio</option>
+          <option value="Jean Paul">Jean Paul</option>
+          <option value="Breiner">Breiner</option>
+        </select>
+        <div class="flex gap-2 mb-3">
+          <input type="date" id="edit-fechaInicio" class="w-1/2 p-2 border rounded" title="Fecha de inicio" required>
+          <input type="date" id="edit-fechaFin" class="w-1/2 p-2 border rounded" title="Fecha de finalización" required>
+        </div>
+        <input type="url" id="edit-url" placeholder="URL del Entregable (Opcional)" class="w-full mb-4 p-2 border rounded">
+
+        <div class="flex justify-end gap-2">
+          <button type="button" onclick="toggleModal('modal-editar-tarea')" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Cancelar</button>
+          <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
     // ==========================================
     // CONFIGURACIÓN: Pega aquí la URL de tu Web App
     // ==========================================
-    const API_URL = 'https://script.google.com/macros/s/AKfycbyGOUKqHv066vN9vHs6rqv4aO-wcHSo7NBy8J66OdUFm_QrIMDnDABqQclfn7QRlcA1jg/exec';
+    const API_URL = 'https://script.google.com/macros/s/AKfycby5hAqCiKtcQBBGWSUKeImUCrVyxTQqRfZxkj7IUZS5EfLd1uAgFUr5xwqEHdbDx-TtLA/exec';
 
     // Inicializar Tablero
     document.addEventListener("DOMContentLoaded", cargarTarjetas);
@@ -106,7 +134,12 @@
       }
     }
 
+    let tarjetasCache = [];
+    let seArrastro = false;
+
     function renderizarTarjetas(tarjetas) {
+      tarjetasCache = tarjetas;
+
       // Limpiar columnas
       document.querySelectorAll('.kanban-column').forEach(col => col.innerHTML = '');
       
@@ -118,6 +151,13 @@
         cardElement.dataset.id = tarjeta.id;
         
         cardElement.ondragstart = drag;
+        cardElement.ondragend = () => {
+          seArrastro = true;
+          setTimeout(() => { seArrastro = false; }, 0);
+        };
+        cardElement.onclick = () => {
+          if (!seArrastro) abrirModalEdicion(tarjeta.id)
+        };
         
         let urlHTML = tarjeta.url ? `<a href="${tarjeta.url}" target="_blank" class="text-xs text-blue-600 hover:underline truncate block mt-2">🔗 Ver Entregable</a>` : '';
 
@@ -225,6 +265,63 @@
         boton.innerText = "Guardar Tarjeta";
       }
     }
+
+    // Edición de tarjetas
+    function abrirModalEdicion (id) {
+      const tarjeta = tarjetasCache.find(t => t.id == id);
+      if (!tarjeta) return;
+
+      document.getElementById('edit-id').value = tarjeta.id;
+      document.getElementById('edit-titulo').value = tarjeta.titulo;
+      document.getElementById('edit-descripcion').value = tarjeta.descripcion;
+      document.getElementById('edit-responsable').value = tarjeta.responsable;
+      document.getElementById('edit-fechaInicio').value = formatearFecha(tarjeta.fechaInicio);
+      document.getElementById('edit.fechaFin').value = formatearFecha(tarjeta.fechaFin);
+      document.getElementById('edit-url').value = tarjeta.url || '';
+
+      toggleModal('modal-editar-tarea');
+    }
+
+    function formatearFecha(fecha) {
+      if (!fecha) return '';
+      const d = new Date(fecha);
+      if (isNaN(d)) return fecha;
+      return d.toISOString().split('T')[0];
+    }
+
+    async function guardarEdicion(event) {
+      event.preventDefault();
+      const boton = event.target.querySelector('button[type="submit"]');
+      boton.disabled = true;
+      boton.innerText = "Guardando...";
+
+      const tarjetaEditada = {
+        id: document.getElementById('edit-id').value,
+        titulo: document.getElementById('edit-titulo').value,
+        descripcion: document.getElementById('edit-descripcion').value,
+        responsable: document.getElementById('edit-responsable').value,
+        fechaInicio: document.getElementById('edit-fechaInicio').value,
+        fechaFin: document.getElementById('edit.fechaFin').value,
+        url: document.getElementById('edit-url').value,
+      };
+
+      try {
+        await fetch(API_URL, {
+          method: 'POST',
+           headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({action: 'updateCard', card: tarjetaEditada })
+        });
+        await cargarTarjetas();
+        toggleModal('modal-editar-tarea');
+      } catch (error) {
+        console.error("Error editando tarea:", error);
+        alert("Hubo un problema al guardar los cambios.");
+      } finally {
+        boton.disabled = false;
+        boton.innerText = "Guardar Cambios";
+      }
+    }
+
   </script>
 </body>
 </html>
